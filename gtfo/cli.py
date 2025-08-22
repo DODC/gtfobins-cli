@@ -41,13 +41,13 @@ def parse_args():
 	)
 	parser.add_argument('-f', '--file', metavar='file', help='File to import and strip') 
 	parser.add_argument('-b', '--binary',metavar='binary', help='Unix binary to search for exploitation techniques')
+	parser.add_argument('-m', '--method',metavar='method', help='Single method to target eg. SUID')
 	return parser.parse_args()
 
-def results(binary):
+def results(binary,method):
 	file_path = data_dir / f"{binary}{json_ext}"
 	if file_path.exists():
-		print(info.safe_substitute(text="Supplied binary: " + binary))
-		print(info.safe_substitute(text="Please wait, loading data ... "))
+		#print(title.safe_substitute(title=binary))
 		with open(file_path) as source:
 			data = source.read()
 
@@ -56,20 +56,22 @@ def results(binary):
 			print('\n' + description.safe_substitute(description=json_data['description']))
 
 		for vector in json_data['functions']:
-			print(title.safe_substitute(title=str(vector).upper()))
-			index = 0
-			for code in json_data['functions'][vector]:
-				index = index + 1
-				if 'description' in code:
-					print(description.safe_substitute(description=code['description']) + '\n')
-				print(highlight(code['code'], lexers.BashLexer(),
-								formatters.TerminalTrueColorFormatter(style='igor')).strip())
-				if index != len(json_data['functions'][vector]):
-					print(divider)
+			if method==vector.lower() or method=='all':
+				print(title.safe_substitute(title=binary+" || "+str(vector).upper()))
+				index = 0
+				for code in json_data['functions'][vector]:
+					index = index + 1
+					if 'description' in code:
+						print(description.safe_substitute(description=code['description']) + '\n')
+					print(highlight(code['code'], lexers.BashLexer(),
+									formatters.TerminalTrueColorFormatter(style='igor')).strip())
+					if index != len(json_data['functions'][vector]):
+						print(divider)
 
 		
-	else:
-		print(fail.safe_substitute(text="Sorry, couldn't find anything for " + binary))
+	#else:
+		
+		#print(fail.safe_substitute(text="Sorry, couldn't find anything for " + binary))
 
 
 
@@ -77,21 +79,25 @@ def results(binary):
 def run(bina=None):
 	"""Main function that can be called programmatically"""
 	args = parse_args()
+	if args.method:
+		method = args.method.lower()
+	else:
+		method = 'all'
 	if args.file:
 		filepath = args.file
 		with open(filepath, "r") as f:
 			for line in f:
-				results(line.strip().rsplit("/", 1)[-1])
+				results(line.strip().rsplit("/", 1)[-1],method)
 	elif bina is None:
 		args = parse_args()
 		bina = args.binary
-		results(bina)
+		results(bina,method)
 	
 
 
 def main():
 	"""Console script entry point"""
-	#os.system('cls' if os.name == 'nt' else 'clear')
+	os.system('cls' if os.name == 'nt' else 'clear')
 	print(banner)
 	run()
 	print('\n' + info.safe_substitute(text="Goodbye, friend."))
