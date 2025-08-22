@@ -28,63 +28,74 @@ json_ext = ".json"
 info = Template(Style.BRIGHT + '[ ' + Fore.GREEN + '*' + Fore.RESET + ' ] ' + Style.RESET_ALL + '$text')
 fail = Template(Style.BRIGHT + '[ ' + Fore.RED + '-' + Fore.RESET + ' ] ' + Style.RESET_ALL + '$text')
 title = Template(
-    '\n' + Style.BRIGHT + '---------- [ ' + Fore.CYAN + '$title' + Fore.RESET + ' ] ----------' + Style.RESET_ALL + '\n'
+	'\n' + Style.BRIGHT + '---------- [ ' + Fore.CYAN + '$title' + Fore.RESET + ' ] ----------' + Style.RESET_ALL + '\n'
 )
 description = Template(Style.DIM + '# ' + '$description' + Style.RESET_ALL)
 divider = '\n' + Style.BRIGHT + ' - ' * 10 + Style.RESET_ALL + '\n'
 
 
 def parse_args():
-    from . import __version__
-    parser = argparse.ArgumentParser(
-        prog="gtfo",
-        description="Command-line tool for GTFOBins - helps you bypass system security restrictions."
-    )
-    parser.add_argument('-v', '--version', action='version', version=f'%(prog)s {__version__}')
-    parser.add_argument('binary', metavar='binary', help='Unix binary to search for exploitation techniques')
-    return parser.parse_args()
+	parser = argparse.ArgumentParser(
+		prog="gtfo",
+		description="Command-line tool for GTFOBins - helps you bypass system security restrictions."
+	)
+	parser.add_argument('-f', '--file', metavar='file', help='File to import and strip') 
+	parser.add_argument('-b', '--binary',metavar='binary', help='Unix binary to search for exploitation techniques')
+	return parser.parse_args()
+
+def results(binary):
+	file_path = data_dir / f"{binary}{json_ext}"
+	if file_path.exists():
+		print(info.safe_substitute(text="Supplied binary: " + binary))
+		print(info.safe_substitute(text="Please wait, loading data ... "))
+		with open(file_path) as source:
+			data = source.read()
+
+		json_data = json.loads(data)
+		if 'description' in json_data:
+			print('\n' + description.safe_substitute(description=json_data['description']))
+
+		for vector in json_data['functions']:
+			print(title.safe_substitute(title=str(vector).upper()))
+			index = 0
+			for code in json_data['functions'][vector]:
+				index = index + 1
+				if 'description' in code:
+					print(description.safe_substitute(description=code['description']) + '\n')
+				print(highlight(code['code'], lexers.BashLexer(),
+								formatters.TerminalTrueColorFormatter(style='igor')).strip())
+				if index != len(json_data['functions'][vector]):
+					print(divider)
+
+		
+	else:
+		print(fail.safe_substitute(text="Sorry, couldn't find anything for " + binary))
 
 
-def run(binary=None):
-    """Main function that can be called programmatically"""
-    if binary is None:
-        args = parse_args()
-        binary = args.binary
-    
-    file_path = data_dir / f"{binary}{json_ext}"
-    if file_path.exists():
-        print(info.safe_substitute(text="Supplied binary: " + binary))
-        print(info.safe_substitute(text="Please wait, loading data ... "))
-        with open(file_path) as source:
-            data = source.read()
 
-        json_data = json.loads(data)
-        if 'description' in json_data:
-            print('\n' + description.safe_substitute(description=json_data['description']))
 
-        for vector in json_data['functions']:
-            print(title.safe_substitute(title=str(vector).upper()))
-            index = 0
-            for code in json_data['functions'][vector]:
-                index = index + 1
-                if 'description' in code:
-                    print(description.safe_substitute(description=code['description']) + '\n')
-                print(highlight(code['code'], lexers.BashLexer(),
-                                formatters.TerminalTrueColorFormatter(style='igor')).strip())
-                if index != len(json_data['functions'][vector]):
-                    print(divider)
-
-        print('\n' + info.safe_substitute(text="Goodbye, friend."))
-    else:
-        print(fail.safe_substitute(text="Sorry, couldn't find anything for " + binary))
+def run(bina=None):
+	"""Main function that can be called programmatically"""
+	args = parse_args()
+	if args.file:
+		filepath = args.file
+		with open(filepath, "r") as f:
+			for line in f:
+				results(line.strip().rsplit("/", 1)[-1])
+	elif bina is None:
+		args = parse_args()
+		bina = args.binary
+		results(bina)
+	
 
 
 def main():
-    """Console script entry point"""
-    os.system('cls' if os.name == 'nt' else 'clear')
-    print(banner)
-    run()
+	"""Console script entry point"""
+	#os.system('cls' if os.name == 'nt' else 'clear')
+	print(banner)
+	run()
+	print('\n' + info.safe_substitute(text="Goodbye, friend."))
 
 
 if __name__ == '__main__':
-    main()
+	main()
